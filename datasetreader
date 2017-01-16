@@ -1,27 +1,47 @@
+def getScreenName(line):
+    return line.split(',')[2]
+
+def appending(value, line):
+    return line + ',' + str(value)
+
+def hasLinkValue(tweet):
+    if 'http://' in tweet:
+        return 1
+    else:
+        return 0
+
+def appendingRetweetValue(line, tweet):
+    if "RT" in tweet[:4]:
+        tweet = tweet[:3].translate(None, '"') + tweet[3:]
+
+    isRetweet = "RT" in tweet[1:3] and " " == tweet[3] and "@" == tweet[4]
+
+    if isRetweet:
+        line = appending(value=1, line=line)
+    else:
+        line = appending(value=0, line=line)
+
+    return line
+
+
 def readDataSet(filename):
     file = open(filename, "r")
     index = 0
     retweetCount = 0
 
     for line in file:
-        index += 1
-        tweet = "'%s'" % line.split(',')[3][:-1]
+        tweetList = line.split(',')[3:]
+        tweet = ''.join(tweetList)
 
-        if "RT" in tweet[:4]:
-            tweet = tweet[:3].translate(None, '"') + tweet[3:]
-            isRetweet = "RT" in tweet[1:3] and " " == tweet[3] and "@" == tweet[4]
-            retweetCount += 1
-            if isRetweet:
-                line += (", 1")
-            else:
-                line += (", 0")
+        line = appendingRetweetValue(line=line, tweet=tweet)
+        line = appending(value=getScreenName(line=line), line=line)
+        line = appending(value=hasLinkValue(tweet= tweet), line=line)
 
         print line
+        index += 1
 
-
-
-    print "Retweets: " + str(retweetCount)
-    print "Original Tweets: " + str(index - retweetCount)
-
-
+########
 readDataSet("20170109-timeline-sample-twitter-bot.csv")
+
+
+######## Helpers
