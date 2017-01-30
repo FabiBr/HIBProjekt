@@ -1,1 +1,4 @@
 ﻿https://github.com/bnosac/pattern.nlp
+
+cmd: 	pip install pattern   // python 2.7 64bit
+	Rscript install.r
