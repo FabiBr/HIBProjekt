@@ -1,0 +1,1 @@
+devtools::install_github("bnosac/pattern.nlp", args = "--no-multiarch")
