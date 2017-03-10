@@ -6,7 +6,7 @@ library(slam)
 rm(list=ls())
 
 # load query tweet
-query <- "partei"
+query <- "trump präsident usa"
 
 # load docs
 csu_doc <- readChar("csu_doc.txt", file.info("csu_doc.txt")$size)
@@ -14,11 +14,11 @@ cdu_doc <- readChar("cdu_doc.txt", file.info("cdu_doc.txt")$size)
 linke_doc <- readChar("die_linke_doc.txt", file.info("die_linke_doc.txt")$size)
 grune_doc <- readChar("gruene_doc.txt", file.info("gruene_doc.txt")$size)
 spd_doc <- readChar("spd_doc.txt", file.info("spd_doc.txt")$size)
-unknown_doc <- readChar("unbekannt_doc.txt", file.info("unbekannt_doc.txt")$size)
+afd_doc <- readChar("afd_doc.txt", file.info("afd_doc.txt")$size)
 
-doc.list <- list(csu_doc, cdu_doc, linke_doc, grune_doc, spd_doc, unknown_doc)
+doc.list <- list(csu_doc, cdu_doc, linke_doc, grune_doc, spd_doc, afd_doc)
 N.docs <- length(doc.list)
-names(doc.list) <- list("csu", "cdu", "linke", "gruene", "spd", "unbekannt")
+names(doc.list) <- list("csu", "cdu", "linke", "gruene", "spd", "afd")
 
 # create corpus
 my.docs <- VectorSource(c(doc.list, query))
@@ -30,6 +30,7 @@ my.corpus <- tm_map(my.corpus, removePunctuation)
 my.corpus <- tm_map(my.corpus, removeNumbers)
 my.corpus <- tm_map(my.corpus, content_transformer(tolower))
 my.corpus <- tm_map(my.corpus, stripWhitespace)
+my.corpus <- tm_map(my.corpus, removeWords, stopwords("german"))
 my.corpus <- tm_map(my.corpus, stemDocument)
 
 # Create Doc Term Matrix

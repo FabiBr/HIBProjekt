@@ -1,0 +1,1 @@
+lords <- Corpus (DirSource(“temp/”))

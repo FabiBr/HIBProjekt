@@ -1,2 +1,8 @@
 library(readr)
 dataset <- read_csv("~/Development/HIBProjekt/r/vsm/nomalized_dataset.csv")
+csu <- read_csv("~/Development/HIBProjekt/r/vsm/csu.csv")
+spd <- read_csv("~/Development/HIBProjekt/r/vsm/spd.csv")
+grune <- read_csv("~/Development/HIBProjekt/r/vsm/gruene.csv")
+cdu <- read_csv("~/Development/HIBProjekt/r/vsm/cdu.csv")
+linke <- read_csv("~/Development/HIBProjekt/r/vsm/die_linke.csv")
+afd <- read_csv("~/Development/HIBProjekt/r/vsm/afd.csv")

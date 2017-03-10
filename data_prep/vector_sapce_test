@@ -1,0 +1,14 @@
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
+
+
+
+documents = [
+    "Hallo du stinker", "hallo Laura", "Laura du nudel", "stinker stinker du hallo"
+]
+vectorizer = TfidfVectorizer()
+matrix = vectorizer.fit_transform(documents)
+
+print matrix[0][0]

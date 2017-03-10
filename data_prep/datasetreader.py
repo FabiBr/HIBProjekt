@@ -6,34 +6,8 @@ from nltk.stem.porter import PorterStemmer
 from itertools import groupby
 import numpy as np
 import math
-
-
-###############################################################
-# yules
-
-def words(entry):
-    return filter(lambda w: len(w) > 0,
-                  [w.strip("0123456789!:,.?(){}[]") for w in entry.split()])
-
-def yule(entry):
-    # yule's I measure (the inverse of yule's K measure)
-    # higher number is higher diversity / richer vocabulary
-    d = {}
-    stemmer = PorterStemmer()
-    for w in words(entry):
-        w = stemmer.stem(w).lower()
-        try:
-            d[w] += 1
-        except KeyError:
-            d[w] = 1
-
-    M1 = float(len(d))
-    M2 = sum([len(list(g))*(freq**2) for freq,g in groupby(sorted(d.values()))])
-
-    try:
-        return (M1*M1)/(M2-M1)
-    except ZeroDivisionError:
-        return 0
+import vsm
+import datetime
 
 ###############################################################
 # helpers
@@ -64,6 +38,32 @@ def create_party_collection_docs(dict):
         doc = open(party.lower().replace(' ', '_') + '_doc.txt', 'w')
         doc.write(dict[party])
         doc.close()
+
+def tokenize(tweet):
+    regex = re.compile(r'(~\W+)', re.IGNORECASE)
+    for c in tweet:
+        if c in punctuation:
+            tweet = tweet.replace(c, '')
+    tweet = re.sub(regex, '', tweet)
+    return tweet.split()
+
+def normalize_row(vals):
+    if isinstance(vals[0], basestring): return vals # return unmodifed row when the label column was passed
+    vector_length = math.sqrt(math.fsum(map(square, map(float, vals))))
+    return map(lambda x: x / vector_length, map(float, vals))
+
+def normalize_dataset(dataset):
+    print 'Normalizing dataset...'
+    # rotate matrix to get lists of the column values
+    rotated_matrix = map(list, zip(*map(lambda s: s.split(','), dataset)))
+    normalized = map(normalize_row, rotated_matrix)
+    return map(list, zip(*normalized))
+
+def square(val):
+    return val * val
+
+def csv_filename(party):
+    return party.lower().replace(' ', '_') + '.csv'
 
 
 ########################################################################
@@ -112,31 +112,6 @@ def party(name):
             return line.split(';')[1]
     return 'UNBEKANNT'
 
-def tokenize(tweet):
-    regex = re.compile(r'(~\W+)', re.IGNORECASE)
-    for c in tweet:
-        if c in punctuation:
-            tweet = tweet.replace(c, '')
-    tweet = re.sub(regex, '', tweet)
-    return tweet.split()
-
-def normalize_row(vals):
-    vector_length = math.sqrt(math.fsum(map(square, map(float, vals))))
-    return map(lambda x: x / vector_length, map(float, vals))
-
-def normalize_dataset(dataset):
-    print 'Normalizing dataset...'
-    # rotate matrix to get lists of the column values
-    rotated_matrix = map(list, zip(*map(lambda s: s.split(','), dataset)))
-    normalized = map(normalize_row, rotated_matrix)
-    return map(list, zip(*normalized))
-
-def square(val):
-    return val * val
-
-def csv_filename(party):
-    return party.lower().replace(' ', '_') + '.csv'
-
 ########################################################################
 datarows = []
 parties = []
@@ -151,7 +126,7 @@ def readDataSet(filename):
     raw_tweets = []
     party_datarows = {}
     opened_party_files = {}
-    csv_header = 'words_count,average_word_length,case_ratio,screen_name_length,is_retweet,has_link,hashtags_count,mentions_count'
+    csv_header = 'cdu_sim, csu_sim, afd_sim, linke_sim, gruene_sim, spd_sim, words_count,average_word_length,case_ratio,screen_name_length,is_retweet,has_link,hashtags_count,mentions_count,party'
 
     print 'Loading output file...'
     output_file = open("dataset.csv", "w")
@@ -160,6 +135,14 @@ def readDataSet(filename):
     print 'Loading party comparison file...'
     party_comparision_file = open('party_comparision.csv', 'w')
     party_comparision_file.write('party,average_words_count,average_word_length,average_case_ratio,average_screen_name_length,average_is_retweet,average_has_link,average_hashtags_count,average_mentions_count')
+
+    csu_doc = vsm.textFromFile('csu_doc.txt')
+    linke_doc = vsm.textFromFile('die_linke_doc.txt')
+    cdu_doc = vsm.textFromFile('cdu_doc.txt')
+    gruene_doc = vsm.textFromFile('gruene_doc.txt')
+    afd_doc = vsm.textFromFile('afd_doc.txt')
+    spd_doc = vsm.textFromFile('spd_doc.txt')
+    partyy_docs = [csu_doc, linke_doc, cdu_doc, gruene_doc, afd_doc, spd_doc]
 
     print 'Processing dataset...'
     for line in file:
@@ -198,37 +181,32 @@ def readDataSet(filename):
             tweetsPerParty[partei].append(tweet)
         else: tweetsPerParty[partei] = []
 
-        # create party collections
-        if partei in collections:
-            collections[partei] += ' ' + ''.join([i if ord(i) < 128 else '' for i in tweet]).strip()
-        else: collections[partei] = ''
+        # # create party collections
+        # if partei in collections:
+        #     collections[partei] += ' ' + tweet
+        # else: collections[partei] = ''
 
-        datarow = datarow_for_features([wordsCount, avrgLettersPerWord, caseRatio, screenNameLength, isRetweet, hasLink, hashtagsCount, mentionsCount])
+        cos_sims = vsm.cosine_similarities(query=tweet, documents=partyy_docs)
+        spd_sim = cos_sims['spd']
+        linke_sim = cos_sims['linke']
+        cdu_sim = cos_sims['cdu']
+        gruene_sim = cos_sims['gruene']
+        afd_sim = cos_sims['afd']
+        csu_sim = cos_sims['csu']
+
+        datarow = datarow_for_features([cdu_sim, csu_sim, afd_sim, linke_sim, gruene_sim, spd_sim, wordsCount, avrgLettersPerWord, caseRatio, screenNameLength, isRetweet, hasLink, hashtagsCount, mentionsCount, partei])
         datarows.append(datarow)
         parties.append(partei)
 
-        output_file.write('\n' + datarow)
-
+        if index % 100 == 0: print str(index / 30000) + '%'
         # print datarow
         index += 1
 
+    print 'Writing to files...'
+    for datarow in datarows:
+        output_file.write('\n' + datarow)
+
     file.close()
-
-    # print 'Calculating party comparison...'
-    # pless_dr = {}
-    # for p in party_datarows:
-    #     for i in range(0, len(party_datarows[p])):
-    #         r = []
-    #         for s in party_datarows[p][i].split(',')[:-1]:
-    #             r.append(float(s))
-    #         if p not in pless_dr:
-    #             pless_dr[p] = [r]
-    #         else: pless_dr[p].append(r)
-    # out = []
-    # for p in pless_dr:
-    #     row = p
-    #     out.append(np.array(pless_dr[p]))
-
 
     # normalize
     normfile = open('nomalized_dataset.csv', 'w')
@@ -259,16 +237,17 @@ def readDataSet(filename):
         opened_party_files[partei].write(','.join(map(str, datarow )) + ',' + partei + '\n')
         ik += 1
 
-    create_party_collection_docs(dict=collections)
-
-
+    # create_party_collection_docs(dict=collections)
 
     output_file.close()
     party_comparision_file.close()
-    # print collections['CSU']
+
+
+    # cosine similarities
+
 
 ##############################################################
-readDataSet("20170109-timeline-sample-twitter-bot.csv")
+readDataSet("all-tweets.csv")
 
 
 
